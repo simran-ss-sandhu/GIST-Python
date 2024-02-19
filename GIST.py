@@ -23,7 +23,7 @@ def _resize_and_crop(img: np.ndarray, new_shape: tuple[int, int]):
     return img
 
 
-def preprocess(img: np.ndarray, fc=4):
+def _preprocess(img: np.ndarray, fc=4):
     """Preprocess image through pre-filtering, whitening and local contrast normalisation
     :param fc: controls sigma in gaussian filter
     :param img: image to filter
@@ -60,3 +60,57 @@ def preprocess(img: np.ndarray, fc=4):
     output = output[pad_w:new_h - pad_w, pad_w:new_w - pad_w]
 
     return output
+
+
+def _gabor_filter_bank(img_size: int, num_of_orientations=11, num_of_scales=6):
+    """Creates a filter bank of gabor filters
+    :param img_size: size of the image the filters will be applied to
+    :param num_of_orientations: number of different orientations needed in the filter bank
+    :param num_of_scales: number of different scales needed in the filter bank
+    :return: array of gabor filters
+    """
+
+    # the number of filters that will need to be generated
+    num_of_filters = num_of_orientations * num_of_scales
+
+    # generate the parameters for each filter
+    filter_i = 0
+    filter_params = np.zeros((num_of_filters, 4))
+    for i in range(num_of_scales):
+        for j in range(num_of_orientations):
+            filter_params[filter_i, :] = [
+                0.35,
+                0.3 / (1.85**i),
+                16 * num_of_orientations ** 2 / 32 ** 2,
+                np.pi / num_of_orientations * j
+            ]
+            filter_i += 1
+
+    # frequency information
+    fx, fy = np.meshgrid(np.arange(-img_size / 2, img_size / 2),
+                         np.arange(-img_size / 2, img_size / 2))
+    radial_freq = np.fft.fftshift(np.sqrt(fx ** 2 + fy ** 2))
+    angle = np.fft.fftshift(np.angle(fx + 1j * fy))
+
+    # generate filters
+    filter_bank = np.zeros((img_size, img_size, num_of_filters))
+    for i in range(num_of_filters):
+        curr_angle = angle + filter_params[i, 3]
+        curr_angle = curr_angle + 2 * np.pi * (curr_angle < -np.pi) - 2 * np.pi * (curr_angle > np.pi)
+
+        filter_bank[:, :, i] = np.exp(-10
+                                      * filter_params[i, 0]
+                                      * (radial_freq / img_size / filter_params[i, 1] - 1) ** 2 - 2
+                                      * filter_params[i, 2] * np.pi * curr_angle ** 2)
+
+    # reshape the filter bank if needed
+    if np.all(np.array(np.shape(filter_bank))[:2] == 1):
+        filter_bank = np.squeeze(filter_bank, axis=(0, 1))
+    if np.all(np.array(np.shape(filter_bank))[:3] == 1):
+        filter_bank = np.squeeze(filter_bank, axis=(2,))
+    if np.any(np.array(np.shape(filter_bank))[:2] == 1):
+        filter_bank = np.squeeze(filter_bank, axis=2)
+    if np.all(np.array(np.shape(filter_bank)) == 1):
+        filter_bank = filter_bank.squeeze()
+
+    return filter_bank
