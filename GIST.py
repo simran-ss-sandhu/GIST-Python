@@ -114,3 +114,34 @@ def _gabor_filter_bank(img_size: int, num_of_orientations=11, num_of_scales=6):
         filter_bank = filter_bank.squeeze()
 
     return filter_bank
+
+
+def _calculate_features(filtered_img: np.ndarray, grid_length=4):
+    """
+    Calculates features from an image by splitting it into a grid and getting the mean of each cell
+    :param filtered_img: the image to get the features from
+    :return: list of image features
+    """
+
+    # get image dimensions
+    img_h, img_w = filtered_img.shape
+
+    # indices for dividing the image into non-overlapping blocks
+    cell_row_indices = np.linspace(0, img_h, grid_length + 1, dtype=int)
+    cell_col_indices = np.linspace(0, img_w, grid_length + 1, dtype=int)
+
+    # initialise features array
+    features = np.zeros((grid_length, grid_length))
+
+    # iterate over each block
+    for xx in range(grid_length):
+        for yy in range(grid_length):
+
+            # calculate mean value within the current cell
+            feature = np.mean(np.mean(filtered_img[
+                cell_row_indices[xx]:cell_row_indices[xx + 1],
+                cell_col_indices[yy]:cell_col_indices[yy + 1]
+            ]))
+            features[xx, yy] = feature
+
+    return features
