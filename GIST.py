@@ -3,6 +3,45 @@ import cv2 as cv
 from scipy import fft
 
 
+def calculate_gist_descriptors(img_paths: list[str], new_img_length=256, boundary_extension=32, grid_length=4):
+    """Calculate gist descriptors
+    :param new_img_length: length to resize all images to
+    :param boundary_extension: number of pixels to pad images by
+    :param grid_length: number of cells to split each image side by to make the grid
+    :param img_paths: list of image paths to get features from
+    :return: list of gist descriptors where list[i] = gist descriptor of image at img_paths[i]
+    """
+
+    filter_bank = __create_gabor_filter_bank(img_size=new_img_length + 2 * boundary_extension)
+
+    num_of_images = len(img_paths)
+    num_of_grid_cells = grid_length ** 2
+    num_of_features = filter_bank.shape[2] * num_of_grid_cells
+
+    # initialise list of descriptors
+    descriptors = np.zeros(shape=(num_of_images, num_of_features), dtype=np.float32)
+
+    for i in range(len(img_paths)):
+        img = cv.imread(img_paths[i])
+
+        # convert image to grayscale
+        img = np.mean(img, axis=-1, dtype=np.float32)
+
+        img = __resize_and_crop(img, (new_img_length, new_img_length))
+
+        # scale to be in range 0 to 255
+        img = img - np.min(img)
+        img = 255 * img / np.max(img)
+
+        filtered_img = __preprocess(img)
+
+        descriptor = __calculate_gist_descriptor(filtered_img, filter_bank, boundary_extension, grid_length,
+                                                 num_of_grid_cells)
+        descriptors[i, :] = descriptor
+
+    return descriptors
+
+
 def __resize_and_crop(img: np.ndarray, new_shape: tuple[int, int]):
     """Resize image to a new shape whilst maintaining the original aspect ratio
     :param img: the image to resize
@@ -146,3 +185,52 @@ def __calculate_features(filtered_img: np.ndarray, grid_length: int):
             features[xx, yy] = feature
 
     return features
+
+
+def __calculate_gist_descriptor(img: np.ndarray, gabor_filter_bank: np.ndarray, boundary_extension: int,
+                                grid_length: int, num_of_grid_cells: int):
+    """
+    Calculates the gist descriptor of an image
+    :param img: the image to get the descriptor from
+    :param gabor_filter_bank: the gabor filters to apply
+    :param boundary_extension: number of pixels to pad image by
+    :param grid_length: number of cells on each grid side
+    :param num_of_grid_cells: total number of cells the image is split into (should be grid_length ** 2)
+    :return: gist descriptor that represents the input image
+    """
+
+    # ensures image is assigned enough memory to store results of all calculations
+    img = img.astype(np.float32)
+
+    filter_h, filter_w, num_of_filters = gabor_filter_bank.shape
+
+    # initialises descriptor
+    descriptor = np.zeros(num_of_grid_cells * num_of_filters)
+
+    # image padding to handle boundary effects
+    img = np.pad(
+        img,
+        [(boundary_extension, boundary_extension), (boundary_extension, boundary_extension)],
+        mode='symmetric'
+    )
+
+    # 2D fourier transform is applied to the image
+    img = np.fft.fft2(img)
+
+    # applies gabor filters to calculate descriptor
+    next_free_i = 0
+    for filter_i in range(num_of_filters):
+        # applies gabor filter and then removes padding
+        filtered_img = np.abs(np.fft.ifft2(img * gabor_filter_bank[:, :, filter_i]))
+        filtered_img = filtered_img[
+                       boundary_extension:filter_h - boundary_extension,
+                       boundary_extension:filter_w - boundary_extension
+                       ]
+
+        # adds feature values from the filtered image to the descriptor
+        features = __calculate_features(filtered_img, grid_length)
+        descriptor[next_free_i:next_free_i + num_of_grid_cells] = features.reshape(num_of_grid_cells, order='F')
+
+        next_free_i += num_of_grid_cells
+
+    return descriptor
