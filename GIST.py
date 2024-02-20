@@ -62,8 +62,8 @@ def _preprocess(img: np.ndarray, fc=4):
     return output
 
 
-def _gabor_filter_bank(img_size: int, num_of_orientations=11, num_of_scales=6):
-    """Creates a filter bank of gabor filters
+def _create_gabor_filter_bank(img_size: int, num_of_orientations=11, num_of_scales=6):
+    """Creates a filter bank of gabor filters and returns it
     :param img_size: size of the image the filters will be applied to
     :param num_of_orientations: number of different orientations needed in the filter bank
     :param num_of_scales: number of different scales needed in the filter bank
