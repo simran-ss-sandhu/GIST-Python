@@ -3,7 +3,7 @@ import cv2 as cv
 from scipy import fft
 
 
-def _resize_and_crop(img: np.ndarray, new_shape: tuple[int, int]):
+def __resize_and_crop(img: np.ndarray, new_shape: tuple[int, int]):
     """Resize image to a new shape whilst maintaining the original aspect ratio
     :param img: the image to resize
     :param new_shape: the desired shape
@@ -23,7 +23,7 @@ def _resize_and_crop(img: np.ndarray, new_shape: tuple[int, int]):
     return img
 
 
-def _preprocess(img: np.ndarray, fc=4):
+def __preprocess(img: np.ndarray, fc=4):
     """Preprocess image through pre-filtering, whitening and local contrast normalisation
     :param fc: controls sigma in gaussian filter
     :param img: image to filter
@@ -62,7 +62,7 @@ def _preprocess(img: np.ndarray, fc=4):
     return output
 
 
-def _create_gabor_filter_bank(img_size: int, num_of_orientations=11, num_of_scales=6):
+def __create_gabor_filter_bank(img_size: int, num_of_orientations=11, num_of_scales=6):
     """Creates a filter bank of gabor filters and returns it
     :param img_size: size of the image the filters will be applied to
     :param num_of_orientations: number of different orientations needed in the filter bank
@@ -116,10 +116,11 @@ def _create_gabor_filter_bank(img_size: int, num_of_orientations=11, num_of_scal
     return filter_bank
 
 
-def _calculate_features(filtered_img: np.ndarray, grid_length=4):
+def __calculate_features(filtered_img: np.ndarray, grid_length: int):
     """
     Calculates features from an image by splitting it into a grid and getting the mean of each cell
     :param filtered_img: the image to get the features from
+    :param grid_length: number of cells on each grid side
     :return: list of image features
     """
 
