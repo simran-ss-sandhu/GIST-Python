@@ -6,11 +6,11 @@
 1. [Download and Install Python](https://www.python.org/downloads/)
 2. Clone the repository
     ```
-   git clone https://github.com/simran-ss-sandhu/GIST-Python
+   git clone https://github.com/simran-ss-sandhu/GIST-Python.git
    ```
 3. Navigate to the folder
     ```
-   cd GIST-Python
+   cd GIST-Python-main
    ```
 4. Install Python packages and dependencies
     ```
